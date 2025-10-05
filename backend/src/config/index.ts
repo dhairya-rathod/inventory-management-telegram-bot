@@ -1,31 +1,59 @@
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+import dotenv from "dotenv";
 
 dotenv.config();
 
-export const config = {
-  port: process.env.PORT || 3000,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  bot: {
-    token: process.env.BOT_TOKEN || '',
-    webhookDomain: process.env.WEBHOOK_DOMAIN,
+interface Config {
+  server: {
+    port: number;
+    env: string;
+  };
+  telegram: {
+    botToken: string;
+    webhookUrl?: string;
+  };
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceRoleKey: string;
+  };
+  logging: {
+    level: string;
+  };
+}
+
+const config: Config = {
+  server: {
+    port: parseInt(process.env.PORT || "8080", 10),
+    env: process.env.NODE_ENV || "development",
+  },
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+    webhookUrl: process.env.TELEGRAM_WEBHOOK_URL,
   },
   supabase: {
-    url: process.env.SUPABASE_URL || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || '',
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    url: process.env.SUPABASE_URL || "",
+    anonKey: process.env.SUPABASE_ANON_KEY || "",
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   },
-  frontend: {
-    url: process.env.FRONTEND_URL || 'http://localhost:5173',
+  logging: {
+    level: process.env.LOG_LEVEL || "info",
   },
 };
 
 // Validate required environment variables
-const requiredEnvVars = ['BOT_TOKEN', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(`Missing required environment variable: ${envVar}`);
-  }
+const requiredEnvVars = [
+  "TELEGRAM_BOT_TOKEN",
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+];
+
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missingEnvVars.join(", ")}`
+  );
 }
 
-export const supabase = createClient(config.supabase.url, config.supabase.anonKey);
+export default config;

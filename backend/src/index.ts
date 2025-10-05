@@ -1,37 +1,71 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import { bot, initBot } from './bot/bot';
-import { setupRoutes } from './api/routes';
-import { config } from './config';
-
-dotenv.config();
+import express from "express";
+import "express-async-errors";
+import cors from "cors";
+import helmet from "helmet";
+import config from "./config";
+import logger from "./utils/logger";
+import { testConnection } from "./database/supabase.client";
+import bot from "./bot/bot";
+import { notFoundMiddleware, errorHandlerMiddleware } from "./utils/error-handler";
 
 const app = express();
 
 // Middleware
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS setup for frontend
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', config.frontend.url);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
+// Health check endpoint
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Setup routes
-setupRoutes(app);
+// API routes will go here
+// Example: app.use('/api/v1', apiRoutes);
 
-// Webhook endpoint for production
-if (config.nodeEnv === 'production') {
-  app.post('/webhook', (req, res) => {
-    bot.handleUpdate(req.body, res);
-  });
-}
+// Error handling
+app.use(notFoundMiddleware);
+app.use(errorHandlerMiddleware);
 
-// Start server
-app.listen(config.port, async () => {
-  console.log(`Server is running on port ${config.port}`);
-  await initBot();
-});
+// Initialize application
+const startApp = async () => {
+  try {
+    logger.info("Starting Stock Management Bot...");
+
+    // Test database connection
+    // const dbConnected = await testConnection();
+    // if (!dbConnected) {
+    //   throw new Error("Failed to connect to database");
+    // }
+
+    // Start Telegram bot
+    logger.info("Initializing Telegram bot...");
+    await bot.launch();
+    logger.info("✅ Telegram bot started successfully");
+
+    // Start Express server
+    app.listen(config.server.port, () => {
+      logger.info(`✅ Server running on port ${config.server.port}`);
+      logger.info(`Environment: ${config.server.env}`);
+    });
+
+    // Graceful shutdown
+    process.once("SIGINT", () => {
+      logger.info("Received SIGINT, shutting down gracefully...");
+      bot.stop("SIGINT");
+      process.exit(0);
+    });
+
+    process.once("SIGTERM", () => {
+      logger.info("Received SIGTERM, shutting down gracefully...");
+      bot.stop("SIGTERM");
+      process.exit(0);
+    });
+  } catch (error) {
+    logger.error("Failed to start application", error);
+    process.exit(1);
+  }
+};
+
+startApp();
