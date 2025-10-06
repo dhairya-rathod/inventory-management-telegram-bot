@@ -26,6 +26,7 @@ CREATE TABLE products (
     description TEXT,
     sku TEXT UNIQUE NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
+    selling_price DECIMAL(10,2) NOT NULL,
     unit TEXT NOT NULL,
     category TEXT,
     image_url TEXT,

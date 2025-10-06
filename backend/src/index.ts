@@ -6,7 +6,10 @@ import config from "./config";
 import logger from "./utils/logger";
 import { testConnection } from "./database/supabase.client";
 import bot from "./bot/bot";
-import { notFoundMiddleware, errorHandlerMiddleware } from "./utils/error-handler";
+import {
+  notFoundMiddleware,
+  errorHandlerMiddleware,
+} from "./utils/error-handler";
 
 const app = express();
 
@@ -34,15 +37,22 @@ const startApp = async () => {
     logger.info("Starting Stock Management Bot...");
 
     // Test database connection
-    // const dbConnected = await testConnection();
-    // if (!dbConnected) {
-    //   throw new Error("Failed to connect to database");
-    // }
+    const dbConnected = await testConnection();
+    if (!dbConnected) {
+      throw new Error("Failed to connect to database");
+    }
 
     // Start Telegram bot
     logger.info("Initializing Telegram bot...");
-    await bot.launch();
-    logger.info("✅ Telegram bot started successfully");
+    bot
+      .launch()
+      .then(() => {
+        logger.info("✅ Telegram bot started successfully");
+      })
+      .catch((err) => {
+        logger.error("🚫 Failed to launch Telegram bot", err);
+        process.exit(1);
+      });
 
     // Start Express server
     app.listen(config.server.port, () => {

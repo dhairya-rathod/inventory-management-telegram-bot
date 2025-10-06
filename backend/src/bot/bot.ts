@@ -1,11 +1,28 @@
-import { Telegraf } from "telegraf";
+import { Telegraf, Scenes, session } from "telegraf";
+import { BotContext } from "../types/bot.types";
 import config from "../config";
 import logger from "../utils/logger";
 import { handleBotError } from "../utils/error-handler";
+import {
+  addProductWizard,
+  listProductsScene,
+  viewProductScene,
+} from "./scenes/products";
 
 // Initialize bot
-console.log("TCL ~ config.telegram.botToken:", config.telegram.botToken);
-const bot = new Telegraf(config.telegram.botToken);
+const bot = new Telegraf<BotContext>(config.telegram.botToken);
+
+// Session middleware
+bot.use(session());
+
+const stage = new Scenes.Stage([
+  addProductWizard, // @ts-ignore
+  listProductsScene, // @ts-ignore
+  viewProductScene,
+]);
+
+// @ts-ignore
+bot.use(stage.middleware());
 
 // Error handling middleware
 bot.catch((err, ctx) => {
@@ -54,6 +71,43 @@ More commands coming soon! 🚀
 // Test command
 bot.command("ping", async (ctx) => {
   await ctx.reply("🏓 Pong!");
+});
+
+// Products command
+bot.command("addproduct", async (ctx) => {
+  try {
+    await ctx.scene.enter("ADD_PRODUCT_WIZARD");
+  } catch (error) {
+    console.log("TCL ~ error:", error);
+    logger.error("Error entering add product scene:", error);
+    await ctx.reply("❌ Failed to start product creation. Please try again.");
+  }
+});
+
+bot.command("listproducts", async (ctx) => {
+  try {
+    await ctx.scene.enter("LIST_PRODUCTS");
+  } catch (error) {
+    logger.error("Error entering list products scene:", error);
+    await ctx.reply("❌ Failed to fetch product list. Please try again.");
+  }
+});
+
+bot.command("product", async (ctx) => {
+  try {
+    const sku = ctx.message.text.split(" ")[1];
+    if (!sku) {
+      await ctx.reply(
+        "⚠️ Please provide a product SKU.\n" + "Usage: /product <sku>"
+      );
+      return;
+    }
+
+    await ctx.scene.enter("VIEW_PRODUCT", { sku });
+  } catch (error) {
+    logger.error("Error entering view product scene:", error);
+    await ctx.reply("❌ Failed to fetch product details. Please try again.");
+  }
 });
 
 // Log all incoming messages in development

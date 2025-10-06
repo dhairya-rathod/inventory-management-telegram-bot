@@ -15,7 +15,7 @@ const logLevelMap: Record<string, LogLevel> = {
 };
 
 const currentLogLevel =
-  logLevelMap[config.logging.level.toLowerCase()] || LogLevel.INFO;
+  logLevelMap[config.logging.level.toLowerCase()] ?? LogLevel.INFO;
 
 class Logger {
   private formatMessage(level: string, message: string, meta?: any): string {
